@@ -1,0 +1,114 @@
+1) mysql> create table enrolled_in (sid int,
+    -> course_id varchar(10), term varchar(20),
+    -> FOREIGN KEY (sid) REFERENCES students(sid), FOREIGN KEY(course_id) REFERENCES courses(course_id));
+Query OK, 0 rows affected (1.99 sec)
+
+mysql> describe enrolled_in;
++-----------+-------------+------+-----+---------+-------+
+| Field     | Type        | Null | Key | Default | Extra |
++-----------+-------------+------+-----+---------+-------+
+| sid       | int         | YES  | MUL | NULL    |       |
+| course_id | varchar(10) | YES  | MUL | NULL    |       |
+| term      | varchar(20) | YES  |     | NULL    |       |
++-----------+-------------+------+-----+---------+-------+
+3 rows in set (0.04 sec)
+
+mysql> update enrolled_in
+    -> set sid=sid+5;
+ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`secondary_school`.`enrolled_in`, CONSTRAINT `enrolled_in_ibfk_1` FOREIGN KEY (`sid`) REFERENCES `students` (`sid`))
+
+2) 
+delimiter //
+create procedure proc_update_enrollment(IN in_sid int, OUT out_count int)
+begin
+	drop table if exists temp_students;
+	create table temp_students(sid int, grade int, name varchar(25), PRIMARY KEY(sid));
+	insert into temp_students
+	select S.sid, S.grade, S.name from students S where S.sid<in_sid;
+	select count(*) into out_count from temp_students;
+end //
+delimiter ;
+
+mysql> show tables;
++----------------------------+
+| Tables_in_secondary_school |
++----------------------------+
+| administration             |
+| courses                    |
+| enrolled_in                |
+| instructs                  |
+| parents                    |
+| registers                  |
+| responsible_for            |
+| schedules                  |
+| students                   |
+| supervises                 |
+| teachers                   |
++----------------------------+
+11 rows in set (0.00 sec)
+
+mysql> call proc_update_enrollment(5,@out_count);
+Query OK, 1 row affected (1.67 sec)
+
+mysql> show tables;
++----------------------------+
+| Tables_in_secondary_school |
++----------------------------+
+| administration             |
+| courses                    |
+| enrolled_in                |
+| instructs                  |
+| parents                    |
+| registers                  |
+| responsible_for            |
+| schedules                  |
+| students                   |
+| supervises                 |
+| teachers                   |
+| temp_students              |
++----------------------------+
+12 rows in set (0.04 sec)
+
+mysql> select @out_count;
++------------+
+| @out_count |
++------------+
+|          4 |
++------------+
+1 row in set (0.00 sec)
+
+mysql> select * from temp_students;
++-----+-------+----------+
+| sid | grade | name     |
++-----+-------+----------+
+|   1 |    10 | student1 |
+|   2 |     9 | student2 |
+|   3 |    12 | student3 |
+|   4 |    12 | student4 |
++-----+-------+----------+
+4 rows in set (0.00 sec)
+
+This procedure creates a temporary student table (temp_students) and funnels the sid, grade and name data in from the students table based upon the sid maximum that is passed into the input parameter.
+
+3) 
+mysql> select * from enrolled_in where term='Fall2020';
+2381 rows in set (0.41 sec)
+
+mysql> alter table enrolled_in add index (term);
+Query OK, 0 rows affected (5.51 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+mysql> select * from enrolled_in where term='Fall2020';
+2381 rows in set (0.06 sec)
+
+
+
+mysql> Select * from students S Left outer join enrolled_in E on S.sid=E.sid where S.grade=10;
+4576 rows in set (0.32 sec)
+
+mysql> Alter table students add index(grade);
+
+mysql> Select * from students S Left outer join enrolled_in E on S.sid=E.sid where S.grade=10;
+4576 rows in set (0.07 sec)
+
+
